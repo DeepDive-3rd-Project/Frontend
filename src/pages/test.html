@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kakao Map Test</title>
+    <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=e952b2c5640cdd93c581a0c212caca9e&libraries=services"></script>
+  </head>
+  <body>
+    <div id="map" style="width: 100%; height: 500px"></div>
+    <script>
+      const container = document.getElementById("map");
+      const options = {
+        center: new kakao.maps.LatLng(37.5665, 126.978),
+        level: 3,
+      };
+      const map = new kakao.maps.Map(container, options);
+    </script>
+  </body>
+</html>
