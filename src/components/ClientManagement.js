@@ -1,116 +1,79 @@
+import "../styles/ClientManagement.css";
+import DummyData from "../data/DummyData";
 import React, { useState, useEffect } from "react";
 import KakaoMap from "./KakaoMap";
-import "../styles/ClientManagement.css";
 
 const ClientManagement = () => {
-  const [clients, setClients] = useState([
-    {
-      id: 1,
-      name: "강요한",
-      email: "KYH@example.com",
-      phone: "010-1234-5678",
-      oldAddress: "서울시 강남구 논현동 45-2",
-      newAddress: "서울시 강남구 학동로 120",
-    },
-    {
-      id: 2,
-      name: "이지은",
-      email: "LJE@example.com",
-      phone: "010-8765-4321",
-      oldAddress: "부산시 해운대구 좌동 1503",
-      newAddress: "부산시 해운대구 해운대로 802",
-    },
-    {
-      id: 3,
-      name: "송준환",
-      email: "SJH@example.com",
-      phone: "010-8765-4321",
-      oldAddress: "서울시 마포구 서교동 33-44",
-      newAddress: "서울시 마포구 홍익로 25",
-    },
-    {
-      id: 4,
-      name: "박민준",
-      email: "PMJ@example.com",
-      phone: "010-8765-4321",
-      oldAddress: "대구시 수성구 범어동 123-5",
-      newAddress: "대구시 수성구 동대구로 305",
-    },
-    {
-      id: 5,
-      name: "이정훈",
-      email: "LJH@example.com",
-      phone: "010-8765-4321",
-      oldAddress: "인천시 남동구 구월동 1465",
-      newAddress: "인천광역시 남동구 예술로 108-1",
-    },
-    {
-      id: 6,
-      name: "강요한",
-      email: "KYH@example.com",
-      phone: "010-1234-5678",
-      oldAddress: "서울시 강남구 논현동 45-2",
-      newAddress: "서울시 강남구 학동로 120",
-    },
-    {
-      id: 7,
-      name: "이지은",
-      email: "LJE@example.com",
-      phone: "010-8765-4321",
-      oldAddress: "부산시 해운대구 좌동 1503",
-      newAddress: "부산시 해운대구 해운대로 802",
-    },
-    {
-      id: 8,
-      name: "송준환",
-      email: "SJH@example.com",
-      phone: "010-8765-4321",
-      oldAddress: "서울시 마포구 서교동 33-44",
-      newAddress: "서울시 마포구 홍익로 25",
-    },
-    {
-      id: 9,
-      name: "박민준",
-      email: "PMJ@example.com",
-      phone: "010-8765-4321",
-      oldAddress: "대구시 수성구 범어동 123-5",
-      newAddress: "대구시 수성구 동대구로 305",
-    },
-    {
-      id: 10,
-      name: "이정훈",
-      email: "LJH@example.com",
-      phone: "010-8765-4321",
-      oldAddress: "인천시 남동구 구월동 1465",
-      newAddress: "인천광역시 남동구 예술로 108-1",
-    },
-  ]);
-
   const [selectedClient, setSelectedClient] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchCategory, setSearchCategory] = useState("name");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [editedClient, setEditedClient] = useState(null);
+  const [clients, setClients] = useState(DummyData);
+  const [isKakaoLoaded, setIsKakaoLoaded] = useState(!!window.kakao?.maps);
 
   const [newClient, setNewClient] = useState({
     name: "",
     email: "",
     phone: "",
-    oldAddress: "",
-    newAddress: "",
+    gender: "",
+    age: "",
+    region_Address: "",
+    road_Address: "",
+    lat: null,
+    lng: null,
+    addressHistory: [],
   });
 
-  const filteredClients = clients.filter((client) => {
-    return client[searchCategory].includes(searchTerm);
-  });
+  useEffect(() => {
+    if (window.kakao && window.kakao.maps) {
+      console.log("✅ Kakao 지도 API가 이미 로드됨");
+      setIsKakaoLoaded(true);
+    }
+  }, []);
+
+  const filteredClients = clients.filter((client) =>
+    client[searchCategory].toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleSearchAddress = (setClientState) => {
+    new window.daum.Postcode({
+      oncomplete: function (data) {
+        const { roadAddress, jibunAddress } = data;
+
+        if (roadAddress || jibunAddress) {
+          setClientState((prev) => ({
+            ...prev,
+            road_Address: roadAddress || prev.road_Address,
+            region_Address: jibunAddress || prev.region_Address,
+          }));
+
+          fetchCoordinates(roadAddress || jibunAddress, setClientState);
+        }
+      },
+    }).open();
+  };
+
+  const fetchCoordinates = (address) => {
+    const geocoder = new window.kakao.maps.services.Geocoder();
+    geocoder.addressSearch(address, (result, status) => {
+      if (status === window.kakao.maps.services.Status.OK) {
+        setNewClient((prev) => ({
+          ...prev,
+          lat: result[0].y,
+          lng: result[0].x,
+        }));
+      }
+    });
+  };
 
   const handleAddClient = (e) => {
     e.preventDefault();
-    if (Object.values(newClient).some((field) => !field.trim())) {
+    if (Object.values(newClient).some((field) => field === "")) {
       alert("모든 필드를 입력하세요!");
       return;
     }
@@ -119,34 +82,35 @@ const ClientManagement = () => {
       name: "",
       email: "",
       phone: "",
-      oldAddress: "",
-      newAddress: "",
+      gender: "",
+      age: "",
+      region_Address: "",
+      road_Address: "",
+      lat: null,
+      lng: null,
     });
     setIsModalOpen(false);
   };
 
-  const loadKakaoMaps = (callback, attempt = 0) => {
-    if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
-      callback();
-    } else if (attempt < 10) {
-      setTimeout(() => loadKakaoMaps(callback, attempt + 1), 500);
-    } else {
-      console.error("🚨 Kakao Maps API 로딩 실패");
-    }
-  };
-
   useEffect(() => {
     if (selectedClient) {
-      setIsLoading(true);
-      loadKakaoMaps(() => {
-        setIsLoading(false);
-      });
+      console.log("📌 선택된 고객:", selectedClient);
+      console.log("📍 고객 좌표:", selectedClient.lat, selectedClient.lng);
+      console.log(
+        `📌 lat 타입: ${typeof selectedClient.lat}, lng 타입: ${typeof selectedClient.lng}`
+      );
+
+      if (typeof selectedClient.lat !== "number") {
+        console.warn("⚠️ lat 또는 lng이 숫자가 아닙니다. 변환 시도...");
+        selectedClient.lat = parseFloat(selectedClient.lat);
+        selectedClient.lng = parseFloat(selectedClient.lng);
+      }
     }
   }, [selectedClient]);
 
   useEffect(() => {
     if (isModalOpen) {
-      setTimeout(() => setIsAnimating(true), 10); // 10ms 후 애니메이션 시작
+      setTimeout(() => setIsAnimating(true), 10);
     } else {
       setIsAnimating(false);
     }
@@ -157,8 +121,8 @@ const ClientManagement = () => {
       e.target.classList.contains("modal-overlay") ||
       e.target.classList.contains("close-modal-btn")
     ) {
-      setIsAnimating(false); // 애니메이션 종료
-      setTimeout(() => setIsModalOpen(false), 300); // 300ms 후 모달 제거
+      setIsAnimating(false);
+      setTimeout(() => setIsModalOpen(false), 300);
     }
   };
 
@@ -176,7 +140,7 @@ const ClientManagement = () => {
   };
 
   const handleOpenEditModal = () => {
-    setEditedClient({ ...selectedClient }); // 기존 정보 불러오기
+    setEditedClient({ ...selectedClient });
     setIsEditModalOpen(true);
   };
 
@@ -195,15 +159,23 @@ const ClientManagement = () => {
         client.id === editedClient.id ? editedClient : client
       )
     );
-    setSelectedClient(editedClient); // 현재 선택된 고객 정보도 업데이트
-    setIsEditModalOpen(false); // 수정 모달 닫기
+    setSelectedClient(editedClient);
+    setIsEditModalOpen(false);
+  };
+
+  const handleOpenHistoryModal = () => {
+    setIsHistoryModalOpen(true);
+  };
+
+  const handleCloseHistoryModal = (e) => {
+    if (e.target.classList.contains("history-modal-overlay")) {
+      setIsHistoryModalOpen(false);
+    }
   };
 
   return (
     <div className="client-management">
       <h2>고객 관리</h2>
-
-      {/* 검색창 추가 */}
       <div className="search-container">
         <select
           value={searchCategory}
@@ -224,7 +196,6 @@ const ClientManagement = () => {
         </button>
       </div>
 
-      {/* 고객 목록 */}
       <div className="client-container">
         <h3>고객 목록</h3>
         <div className="client-list">
@@ -240,7 +211,6 @@ const ClientManagement = () => {
         </div>
       </div>
 
-      {/* 고객 상세 정보 모달  */}
       {selectedClient && (
         <div className="details-modal-overlay" onClick={handleCloseDetails}>
           <div className={`details-modal ${isClosing ? "slide-down" : ""}`}>
@@ -253,10 +223,17 @@ const ClientManagement = () => {
                 ✖
               </button>
             </div>
+
             <div className="details-content">
               <div className="client-info">
                 <p>
                   <strong>이름:</strong> {selectedClient.name}
+                </p>
+                <p>
+                  <strong>성별:</strong> {selectedClient.gender}
+                </p>
+                <p>
+                  <strong>나이:</strong> {selectedClient.age}
                 </p>
                 <p>
                   <strong>이메일:</strong> {selectedClient.email}
@@ -265,24 +242,38 @@ const ClientManagement = () => {
                   <strong>전화번호:</strong> {selectedClient.phone}
                 </p>
                 <p>
-                  <strong>지번 주소:</strong> {selectedClient.oldAddress}
+                  <strong>지번 주소:</strong> {selectedClient.region_Address}
                 </p>
                 <p>
-                  <strong>도로명 주소:</strong> {selectedClient.newAddress}
+                  <strong>도로명 주소:</strong> {selectedClient.road_Address}
                 </p>
                 <button className="edit-btn" onClick={handleOpenEditModal}>
-                  정보 수정
+                  고객 정보 수정
+                </button>
+                <button
+                  className="history-btn"
+                  onClick={handleOpenHistoryModal}
+                >
+                  주소 이전 내역
                 </button>
               </div>
-              <div className="map-container">
-                <KakaoMap address={selectedClient.newAddress} />
-              </div>
+
+              {isKakaoLoaded ? (
+                <KakaoMap
+                  key={`${selectedClient.lat}-${selectedClient.lng}`}
+                  lat={selectedClient.lat}
+                  lng={selectedClient.lng}
+                  width="100%"
+                  height="400px"
+                />
+              ) : (
+                <p>📍 지도 API 로딩 중...</p>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* 고객 정보 수정 모달 */}
       {isEditModalOpen && (
         <div className="edit-modal-overlay">
           <div className="edit-modal">
@@ -315,18 +306,28 @@ const ClientManagement = () => {
               <label>지번 주소:</label>
               <input
                 type="text"
-                name="oldAddress"
-                value={editedClient.oldAddress}
-                onChange={handleEditChange}
+                name="region_Address"
+                value={editedClient.region_Address}
+                placeholder="지번 주소"
+                readOnly
               />
 
               <label>도로명 주소:</label>
               <input
                 type="text"
-                name="newAddress"
-                value={editedClient.newAddress}
-                onChange={handleEditChange}
+                name="road_Address"
+                value={editedClient.road_Address}
+                placeholder="도로명 주소"
+                readOnly
               />
+
+              <button
+                type="button"
+                className="search-address-btn"
+                onClick={() => handleSearchAddress(setEditedClient)}
+              >
+                주소 찾기
+              </button>
 
               <div className="modal-buttons">
                 <button
@@ -349,7 +350,32 @@ const ClientManagement = () => {
         </div>
       )}
 
-      {/* 고객 추가 모달 */}
+      {isHistoryModalOpen && (
+        <div
+          className="history-modal-overlay"
+          onClick={handleCloseHistoryModal}
+        >
+          <div className="history-modal">
+            <button
+              className="close-modal-btn"
+              onClick={() => setIsHistoryModalOpen(false)}
+            >
+              ✖
+            </button>
+            <h3>주소 이전 내역</h3>
+            <ul>
+              {selectedClient.addressHistory?.length > 0 ? (
+                selectedClient.addressHistory.map((address, index) => (
+                  <li key={index}>{address}</li>
+                ))
+              ) : (
+                <p>이전 주소 내역이 없습니다.</p>
+              )}
+            </ul>
+          </div>
+        </div>
+      )}
+
       {isModalOpen && (
         <div className="modal-overlay" onClick={handleCloseModal}>
           <div className={`add-client-modal ${isAnimating ? "show" : ""}`}>
@@ -370,6 +396,33 @@ const ClientManagement = () => {
                 }
                 required
               />
+
+              <label>성별:</label>
+              <select
+                name="gender"
+                value={newClient.gender}
+                onChange={(e) =>
+                  setNewClient({ ...newClient, gender: e.target.value })
+                }
+                className="gender-select"
+                required
+              >
+                <option value="">선택</option>
+                <option value="남자">남자</option>
+                <option value="여자">여자</option>
+              </select>
+
+              <label>나이:</label>
+              <input
+                type="number"
+                name="age"
+                value={newClient.age}
+                onChange={(e) =>
+                  setNewClient({ ...newClient, age: e.target.value })
+                }
+                required
+              />
+
               <label>이메일:</label>
               <input
                 type="email"
@@ -380,6 +433,7 @@ const ClientManagement = () => {
                 }
                 required
               />
+
               <label>전화번호:</label>
               <input
                 type="text"
@@ -390,26 +444,33 @@ const ClientManagement = () => {
                 }
                 required
               />
-              <label>지번 주소:</label>
-              <input
-                type="text"
-                name="oldAddress"
-                value={newClient.oldAddress}
-                onChange={(e) =>
-                  setNewClient({ ...newClient, oldAddress: e.target.value })
-                }
-                required
-              />
+
               <label>도로명 주소:</label>
               <input
                 type="text"
-                name="newAddress"
-                value={newClient.newAddress}
-                onChange={(e) =>
-                  setNewClient({ ...newClient, newAddress: e.target.value })
-                }
-                required
+                name="road_Address"
+                value={newClient.road_Address}
+                placeholder="도로명 주소"
+                readOnly
               />
+
+              <label>지번 주소:</label>
+              <input
+                type="text"
+                name="region_Address"
+                value={newClient.region_Address}
+                placeholder="지번 주소"
+                readOnly
+              />
+
+              <button
+                type="button"
+                className="search-address-btn"
+                onClick={handleSearchAddress}
+              >
+                주소 찾기
+              </button>
+
               <button type="submit" className="submit-btn">
                 추가
               </button>
