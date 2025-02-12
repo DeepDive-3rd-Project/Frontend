@@ -20,6 +20,10 @@ const MyPage = () => {
     }
   }, []);
 
+  const handleOpenModal = () => {
+    setIsModalOpen(true);
+  };
+
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setMessage("");
@@ -49,6 +53,7 @@ const MyPage = () => {
 
   return (
     <>
+      {/* 마이페이지 전용 배경 */}
       <div className="mypage-background"></div>
 
       <div className="mypage-container">
@@ -80,7 +85,7 @@ const MyPage = () => {
             <div className="modal">
               <div className="modal-content">
                 <h3>비밀번호 변경</h3>
-                <form onSubmit={handlePasswordChange}>
+                <form>
                   <label>현재 비밀번호</label>
                   <input
                     type="password"

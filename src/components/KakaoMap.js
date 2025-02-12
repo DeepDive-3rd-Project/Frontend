@@ -1,73 +1,53 @@
 import React, { useState, useEffect } from "react";
 import { Map, MapMarker } from "react-kakao-maps-sdk";
-import "../styles/KakaoMap.css";
 
-const KakaoMap = ({ lat, lng, width = "100%", height = "400px" }) => {
+const KakaoMap = ({ address, width = "100%", height = "300px" }) => {
   const [position, setPosition] = useState(null);
-  const [mapInstance, setMapInstance] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log(`📌 KakaoMap 컴포넌트 - lat: ${lat}, lng: ${lng}`);
-
-    if (!lat || !lng) {
-      console.warn("⚠️ 지도에 표시할 위치 정보가 없습니다.");
-      setPosition(null);
-      return;
+    if (!window.kakao || !window.kakao.maps) {
+      const script = document.createElement("script");
+      script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=e952b2c5640cdd93c581a0c212caca9e&libraries=services,clusterer`;
+      script.async = true;
+      script.onload = () => loadMap();
+      document.head.appendChild(script);
+    } else {
+      loadMap();
     }
+  }, [address]);
 
-    const newPosition = { lat: parseFloat(lat), lng: parseFloat(lng) };
-    console.log(`✅ 위치 값 설정:`, newPosition);
-    setPosition(newPosition);
-  }, [lat, lng]);
+  const loadMap = () => {
+    setLoading(true);
+    const geocoder = new window.kakao.maps.services.Geocoder();
 
-  useEffect(() => {
-    if (mapInstance && position) {
-      console.log("🔄 지도 재배치 (relayout) 실행됨!");
-
-      setTimeout(() => {
-        try {
-          if (mapInstance && typeof mapInstance.relayout === "function") {
-            mapInstance.relayout();
-            mapInstance.setCenter(position);
-          } else {
-            console.warn("⚠️ mapInstance가 아직 생성되지 않음.");
-          }
-        } catch (error) {
-          console.error("🚨 Kakao 지도 관련 오류 발생:", error);
-        }
-      }, 500);
-    }
-  }, [mapInstance, position]);
-
-  useEffect(() => {
-    console.log("📍 KakaoMap useEffect 실행됨");
-    console.log(`📌 현재 position 상태:`, position);
-  }, [position]);
+    geocoder.addressSearch(address, (result, status) => {
+      if (status === window.kakao.maps.services.Status.OK) {
+        setPosition({
+          lat: parseFloat(result[0].y),
+          lng: parseFloat(result[0].x),
+        });
+      } else {
+        console.error("주소 변환 실패:", address);
+      }
+      setLoading(false);
+    });
+  };
 
   return (
-    <div
-      className="kakao-map-container"
-      style={{ width, height, minHeight: "400px", backgroundColor: "white" }}
-    >
-      {!position ? (
-        <p style={{ textAlign: "center", padding: "20px", color: "#333" }}>
+    <div style={{ width, height, borderRadius: "8px", overflow: "hidden" }}>
+      {loading || !position ? (
+        <p style={{ textAlign: "center", padding: "20px" }}>
           📍 지도 로딩 중...
         </p>
       ) : (
-        <>
-          {console.log("🗺️ Kakao Map 렌더링 시작!", position)}
-          <Map
-            center={position}
-            level={2}
-            style={{ width: "70%", height: "100%", minHeight: "400px" }}
-            onCreate={(map) => {
-              console.log("🗺️ Kakao Map 객체 생성됨:", map);
-              setMapInstance(map);
-            }}
-          >
-            <MapMarker position={position} />
-          </Map>
-        </>
+        <Map
+          center={position}
+          style={{ width: "100%", height: "100%" }}
+          level={3}
+        >
+          <MapMarker position={position} />
+        </Map>
       )}
     </div>
   );

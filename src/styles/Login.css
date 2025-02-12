@@ -80,7 +80,7 @@ button:hover {
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 95%;
+  width: 100%;
   height: 100%;
 }
 
@@ -129,7 +129,7 @@ input {
 
 .login-image img {
   width: 100%;
-  height: 340px;
+  height: 350px;
   border-radius: 12px;
 }
 

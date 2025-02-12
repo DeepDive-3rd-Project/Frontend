@@ -1,8 +1,6 @@
 import React, { useState } from "react";
 import "../styles/Management.css";
 import ClientManagement from "../components/ClientManagement";
-import HeatMap from "../components/HeatMap";
-import ClientRetention from "../components/ClientRetention";
 import AdminManagement from "../components/AdminManagement";
 import KakaoMapSearch from "../components/KakaoMapSearch";
 
@@ -11,6 +9,7 @@ const Management = () => {
 
   return (
     <div className="management-container">
+      {/* 사이드바 */}
       <div className="sidebar">
         <h3>관리 메뉴</h3>
         <button
@@ -18,18 +17,6 @@ const Management = () => {
           onClick={() => setSelectedMenu("clients")}
         >
           고객 관리
-        </button>
-        <button
-          className={selectedMenu === "heatmap" ? "active" : ""}
-          onClick={() => setSelectedMenu("heatmap")}
-        >
-          고객 밀집도 분석
-        </button>
-        <button
-          className={selectedMenu === "retention" ? "active" : ""}
-          onClick={() => setSelectedMenu("retention")}
-        >
-          고객 유치 현황
         </button>
         <button
           className={selectedMenu === "admins" ? "active" : ""}
@@ -45,10 +32,9 @@ const Management = () => {
         </button>
       </div>
 
+      {/* 메인 컨텐츠 - 선택된 메뉴에 따라 변경 */}
       <div className="main-content">
         {selectedMenu === "clients" && <ClientManagement />}
-        {selectedMenu === "heatmap" && <HeatMap customers={[]} />}
-        {selectedMenu === "retention" && <ClientRetention clients={[]} />}
         {selectedMenu === "admins" && <AdminManagement />}
         {selectedMenu === "search" && <KakaoMapSearch />}
       </div>

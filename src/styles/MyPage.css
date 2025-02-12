@@ -96,7 +96,7 @@ h2 {
 }
 
 .modal-content button {
-  margin-top: -12px;
+  margin-top: 15px;
   padding: 10px;
   font-size: 16px;
   background-color: black;
@@ -140,8 +140,8 @@ h2 {
 .mypage-container {
   max-width: 500px;
   padding: 30px;
-  background: rgba(255, 255, 255, 0.01);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.01); /* 반투명한 배경 */
+  backdrop-filter: blur(10px); /* 배경 흐림 효과 */
   border-radius: 12px;
   box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
   text-align: center;

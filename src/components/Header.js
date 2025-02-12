@@ -45,14 +45,7 @@ const Header = () => {
                 <Link to="/mypage">MyPage</Link>
               </li>
               <li>
-                <a
-                  href="/"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleLogout();
-                  }}
-                  className="nav-link"
-                >
+                <a href="/" onClick={handleLogout} className="nav-link">
                   Logout
                 </a>
               </li>
