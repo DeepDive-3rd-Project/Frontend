@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import "../styles/HeatMap.css";
 import DummyData from "../data/DummyData";
 
@@ -6,7 +6,6 @@ const KAKAO_API_KEY = process.env.REACT_APP_KAKAO_API_KEY;
 
 const HeatMap = () => {
   const [map, setMap] = useState(null);
-  const [isKakaoLoaded, setIsKakaoLoaded] = useState(false);
   const [customers] = useState(DummyData || []);
   const [filteredCustomers, setFilteredCustomers] = useState(DummyData || []);
   const [selectedAges, setSelectedAges] = useState([]);
@@ -14,73 +13,74 @@ const HeatMap = () => {
   const [customMaxAge, setCustomMaxAge] = useState("");
   const [selectedRegions, setSelectedRegions] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [setLastSearchedRegion] = useState("");
+  const [clusterer, setClusterer] = useState(null);
 
-  useEffect(() => {
-    const loadKakaoMap = () => {
-      if (window.kakao && window.kakao.maps) {
-        setIsKakaoLoaded(true);
-        initializeMap();
-      } else {
-        const script = document.createElement("script");
-        script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_API_KEY}&libraries=services,clusterer,places`;
-        script.async = true;
-        document.head.appendChild(script);
-
-        script.onload = () => {
-          window.kakao.maps.load(() => {
-            setIsKakaoLoaded(true);
-            initializeMap();
-          });
-        };
-      }
-    };
-
-    loadKakaoMap();
-  }, []);
-
-  const initializeMap = () => {
-    if (!window.kakao || !window.kakao.maps) return;
+  const initializeMap = useCallback(() => {
+    if (!window.kakao || !window.kakao.maps || map) return;
 
     const container = document.getElementById("heatmap");
+    if (!container) return;
+
     const options = {
-      center: new window.kakao.maps.LatLng(37.5665, 126.978),
-      level: 5,
+      center: new window.kakao.maps.LatLng(36.5, 127.5),
+      level: 10,
     };
+
     const mapInstance = new window.kakao.maps.Map(container, options);
     setMap(mapInstance);
-  };
+
+    const newClusterer = new window.kakao.maps.MarkerClusterer({
+      map: mapInstance,
+      averageCenter: true,
+      minLevel: 5,
+    });
+    setClusterer(newClusterer);
+  }, [map]);
 
   useEffect(() => {
-    if (!isKakaoLoaded || !map) return;
+    const scriptSrc = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_API_KEY}&libraries=services,clusterer,places`;
+    const existingScript = document.querySelector(`script[src="${scriptSrc}"]`);
 
-    if (window.clusterer) {
-      window.clusterer.clear();
+    if (!existingScript) {
+      const script = document.createElement("script");
+      script.src = scriptSrc;
+      script.async = true;
+      script.onload = () => {
+        window.kakao.maps.load(() => initializeMap());
+      };
+      document.head.appendChild(script);
+    } else {
+      initializeMap();
     }
+  }, [initializeMap]);
 
-    if (!window.kakao.maps.MarkerClusterer) {
-      console.error(
-        "❌ MarkerClusterer가 정상적으로 로드되지 않았습니다. 다시 시도하세요."
-      );
-      return;
-    }
+  const applyClusterer = useCallback(() => {
+    if (!map || !clusterer) return;
 
-    const clusterer = new window.kakao.maps.MarkerClusterer({
-      map: map,
-      averageCenter: true,
-      minLevel: 6,
-    });
+    clusterer.clear();
 
-    window.clusterer = clusterer;
-
-    const markers = filteredCustomers.map((customer) => {
-      return new window.kakao.maps.Marker({
-        position: new window.kakao.maps.LatLng(customer.lat, customer.lng),
-      });
-    });
+    const bounds = new window.kakao.maps.LatLngBounds();
+    const markers = filteredCustomers
+      .map((customer) => {
+        if (!customer.lat || !customer.lng) return null;
+        const position = new window.kakao.maps.LatLng(
+          customer.lat,
+          customer.lng
+        );
+        bounds.extend(position);
+        return new window.kakao.maps.Marker({ position });
+      })
+      .filter(Boolean);
 
     clusterer.addMarkers(markers);
-  }, [isKakaoLoaded, map, filteredCustomers]);
+    map.setBounds(bounds);
+  }, [map, clusterer, filteredCustomers]);
+
+  useEffect(() => {
+    if (map && clusterer) {
+      applyClusterer();
+    }
+  }, [map, clusterer, filteredCustomers, applyClusterer]);
 
   const handleSearch = () => {
     if (!searchTerm.trim()) {
@@ -92,12 +92,10 @@ const HeatMap = () => {
     places.keywordSearch(searchTerm, (data, status) => {
       if (status === window.kakao.maps.services.Status.OK) {
         const bounds = new window.kakao.maps.LatLngBounds();
-        data.forEach((place) => {
-          bounds.extend(new window.kakao.maps.LatLng(place.y, place.x));
-        });
-
+        data.forEach((place) =>
+          bounds.extend(new window.kakao.maps.LatLng(place.y, place.x))
+        );
         map.setBounds(bounds);
-        setLastSearchedRegion(searchTerm);
       } else {
         alert("검색 결과가 없습니다.");
       }
@@ -125,11 +123,9 @@ const HeatMap = () => {
     setCustomMinAge("");
     setCustomMaxAge("");
     setSelectedRegions([]);
-    setFilteredCustomers([...DummyData]);
 
-    if (window.clusterer) {
-      window.clusterer.clear();
-    }
+    if (clusterer) clusterer.clear();
+    setFilteredCustomers([...DummyData]);
   };
 
   const handleFilter = () => {
@@ -158,6 +154,7 @@ const HeatMap = () => {
       );
     }
 
+    if (clusterer) clusterer.clear();
     setFilteredCustomers(filtered);
   };
 
@@ -166,7 +163,6 @@ const HeatMap = () => {
       <div className="heatmap-container">
         <div className="filter-section">
           <h2 className="title">고객 밀집도 필터</h2>
-
           <div className="filter-row">
             <div className="filter-column">
               <h3>👤 연령대 선택</h3>
