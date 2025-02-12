@@ -43,29 +43,32 @@ const ClientManagement = () => {
   const handleSearchAddress = (setClientState) => {
     new window.daum.Postcode({
       oncomplete: function (data) {
-        const { roadAddress, jibunAddress } = data;
+        const { roadAddress, jibunAddress, autoJibunAddress } = data;
 
-        if (roadAddress || jibunAddress) {
-          setClientState((prev) => ({
-            ...prev,
-            road_Address: roadAddress || prev.road_Address,
-            region_Address: jibunAddress || prev.region_Address,
-          }));
+        setClientState((prev) => ({
+          ...prev,
+          road_Address: roadAddress || prev.road_Address,
+          region_Address:
+            jibunAddress || autoJibunAddress || prev.region_Address,
+        }));
 
-          fetchCoordinates(roadAddress || jibunAddress, setClientState);
+        const addressForGeocode =
+          roadAddress || jibunAddress || autoJibunAddress;
+        if (addressForGeocode) {
+          fetchCoordinates(addressForGeocode, setClientState);
         }
       },
     }).open();
   };
 
-  const fetchCoordinates = (address) => {
+  const fetchCoordinates = (address, updateClientState) => {
     const geocoder = new window.kakao.maps.services.Geocoder();
     geocoder.addressSearch(address, (result, status) => {
       if (status === window.kakao.maps.services.Status.OK) {
-        setNewClient((prev) => ({
+        updateClientState((prev) => ({
           ...prev,
-          lat: result[0].y,
-          lng: result[0].x,
+          lat: parseFloat(result[0].y),
+          lng: parseFloat(result[0].x),
         }));
       }
     });
@@ -242,10 +245,10 @@ const ClientManagement = () => {
                   <strong>전화번호:</strong> {selectedClient.phone}
                 </p>
                 <p>
-                  <strong>지번 주소:</strong> {selectedClient.region_Address}
+                  <strong>도로명 주소:</strong> {selectedClient.road_Address}
                 </p>
                 <p>
-                  <strong>도로명 주소:</strong> {selectedClient.road_Address}
+                  <strong>지번 주소:</strong> {selectedClient.region_Address}
                 </p>
                 <button className="edit-btn" onClick={handleOpenEditModal}>
                   고객 정보 수정
@@ -303,15 +306,6 @@ const ClientManagement = () => {
                 onChange={handleEditChange}
               />
 
-              <label>지번 주소:</label>
-              <input
-                type="text"
-                name="region_Address"
-                value={editedClient.region_Address}
-                placeholder="지번 주소"
-                readOnly
-              />
-
               <label>도로명 주소:</label>
               <input
                 type="text"
@@ -321,10 +315,21 @@ const ClientManagement = () => {
                 readOnly
               />
 
+              <label>지번 주소:</label>
+              <input
+                type="text"
+                name="region_Address"
+                value={editedClient.region_Address}
+                placeholder="지번 주소"
+                readOnly
+              />
+
               <button
                 type="button"
                 className="search-address-btn"
-                onClick={() => handleSearchAddress(setEditedClient)}
+                onClick={() =>
+                  handleSearchAddress(setEditedClient, editedClient)
+                }
               >
                 주소 찾기
               </button>
@@ -466,7 +471,7 @@ const ClientManagement = () => {
               <button
                 type="button"
                 className="search-address-btn"
-                onClick={handleSearchAddress}
+                onClick={() => handleSearchAddress(setNewClient, newClient)}
               >
                 주소 찾기
               </button>
