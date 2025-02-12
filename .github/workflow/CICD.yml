@@ -3,10 +3,12 @@ name: CICD
 on:
   push:
     branches:
-      - main  # main 브랜치에 푸시될 때 실행
+      - main # main 브랜치에 푸시될 때 실행
+      - dev 
   pull_request: # PR에서도 실행되도록 추가
     branches:
       - main
+      - dev
 
 jobs:
   deploy:
