@@ -85,7 +85,13 @@ const AdminManagement = () => {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-        <button className="add-btn" onClick={() => setIsEditModalOpen(true)}>
+        <button
+          className="add-btn"
+          onClick={() => {
+            setSelectedAdmin(null);
+            setIsEditModalOpen(true);
+          }}
+        >
           관리자 추가
         </button>
       </div>

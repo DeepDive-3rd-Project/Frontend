@@ -16,7 +16,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap; /* 작은 화면에서는 줄 바꿈 */
+  flex-wrap: wrap;
   margin-bottom: 15px;
   width: 100%;
 }
@@ -103,6 +103,12 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  flex-grow: 1; /* 🔥 내부 내용이 늘어나도 스크롤 적용 */
+  padding-bottom: 40px; /* 🔥 푸터 높이를 고려한 추가 버튼 여백 */
+}
+
+.client-form label {
+  margin-top: -6px;
 }
 
 .client-form input {
@@ -113,12 +119,22 @@
   border-radius: 4px;
 }
 
+.client-form select {
+  width: 106%; /* 입력창과 동일한 너비 설정 */
+  padding: 10px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  background-color: white;
+  margin-bottom: 20px;
+}
+
 .details-modal-overlay {
   position: fixed;
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 100%;
+  height: 110%;
   background: rgba(0, 0, 0, 0.5);
   z-index: 999;
   display: flex;
@@ -127,8 +143,10 @@
 }
 
 .details-modal {
-  width: 70%;
+  width: 90%;
   max-width: 900px;
+  height: 55%;
+  max-height: calc(100vh - 25px);
   background: white;
   border-radius: 12px 12px 0 0;
   box-shadow: 0px -4px 10px rgba(0, 0, 0, 0.2);
@@ -136,6 +154,7 @@
   transform: translateY(100%);
   animation: slide-up 0.3s forwards;
   position: relative;
+  overflow: auto;
 }
 
 .details-modal.slide-down {
@@ -173,10 +192,12 @@
   background: none;
   color: black;
   border: none;
-  font-size: 22px;
+  font-size: 20px;
   cursor: pointer;
   width: 60px;
   transition: transform 0.3s ease-in-out;
+  margin-top: -30px;
+  margin-right: -10px;
 }
 
 .close-details-btn:hover {
@@ -190,16 +211,31 @@
   align-items: flex-start;
 }
 
+.details-footer {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+}
+
 .client-info {
   flex: 1;
   min-width: 250px;
+  max-width: 100%;
+  word-wrap: break-word;
+}
+
+.client-info p {
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: keep-all;
+  max-width: 100%;
 }
 
 .map-container {
   flex: 1;
-  width: 50%;
-  min-width: 300px;
-  height: 300px;
+  width: 100%;
+  min-height: 300px;
+  height: 400px;
   border-radius: 10px;
   overflow: hidden;
   display: flex;
@@ -234,13 +270,16 @@
 }
 
 .edit-btn {
-  margin-top: 10px;
   background: #2b5ef7;
   color: white;
-  padding: 10px;
+  padding: 12px 20px;
   border: none;
   cursor: pointer;
   border-radius: 6px;
+  font-size: 16px;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
 }
 
 .edit-btn:hover {
@@ -296,4 +335,110 @@
   cursor: pointer;
   border-radius: 6px;
   margin-left: 10px;
+}
+
+.history-btn {
+  background: #2b5ef7;
+  color: white;
+  padding: 12px 20px;
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
+  font-size: 16px;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  margin-top: 10px;
+}
+
+.history-btn:hover {
+  background: #1a4cd8;
+}
+
+.history-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.history-modal {
+  background: white;
+  padding: 20px;
+  width: 400px;
+  border-radius: 8px;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.history-modal ul {
+  list-style: none;
+  padding: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  text-align: left;
+}
+
+.history-modal li {
+  padding: 10px 0;
+  border-bottom: 1px solid #ddd;
+}
+
+.history-modal li:last-child {
+  border-bottom: none;
+}
+
+.history-modal-overlay .close-modal-btn {
+  right: 10px;
+  top: -10px;
+  font-size: 20px;
+}
+
+.add-client-modal {
+  max-height: calc(100vh - 25px);
+  overflow-y: auto;
+  padding: 20px;
+  position: fixed;
+  bottom: 25px;
+  display: flex;
+  flex-direction: column;
+}
+
+.edit-modal {
+  max-height: 100vh;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.address-suggestions {
+  position: absolute;
+  background-color: white;
+  border: 1px solid #ddd;
+  list-style-type: none;
+  padding: 5px;
+  max-height: 150px; /* 최대 높이 설정 */
+  overflow-y: auto; /* 세로 스크롤 추가 */
+  width: calc(100% - 20px);
+  z-index: 1000;
+}
+
+.address-suggestions li {
+  padding: 8px;
+  cursor: pointer;
+}
+
+.address-suggestions li:hover {
+  background-color: #f1f1f1;
 }

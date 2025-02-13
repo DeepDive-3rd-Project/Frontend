@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "../styles/KakaoMapSearch.css";
 
-const KAKAO_API_KEY = "e952b2c5640cdd93c581a0c212caca9e";
+const KAKAO_API_KEY = process.env.REACT_APP_KAKAO_API_KEY;
 
 const KakaoMapSearch = () => {
   const [searchTerm, setSearchTerm] = useState("");
