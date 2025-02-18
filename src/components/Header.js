@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
 import "../styles/Header.css";
+
+const API_BASE_URL = process.env.REACT_APP_API_URL;
 
 const Header = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(
@@ -17,12 +20,29 @@ const Header = () => {
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     const confirmLogout = window.confirm("로그아웃 하시겠습니까?");
-    if (confirmLogout) {
+    if (!confirmLogout) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("토큰이 없습니다.");
+
+      await axios.post(
+        `${API_BASE_URL}/api/admin/logout`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          withCredentials: true,
+        }
+      );
+
       localStorage.removeItem("token");
       setIsAuthenticated(false);
       navigate("/");
+    } catch (error) {
+      console.error("❌ 로그아웃 실패:", error);
+      alert("로그아웃에 실패했습니다.");
     }
   };
 

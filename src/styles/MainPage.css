@@ -54,4 +54,5 @@ button:hover {
   width: 100%;
   height: 85%;
   object-fit: cover;
+  margin-top: 2%;
 }

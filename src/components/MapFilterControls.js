@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "../styles/MapFilterControls.css";
 
-const KAKAO_API_KEY = process.env.REACT_APP_KAKAO_API_KEY;
+const KAKAO_API_KEY = process.env.REACT_APP_KAKAO_JS_KE;
 
 const MapFilterControls = ({ customers, setFilteredCustomers }) => {
   const [map, setMap] = useState(null);

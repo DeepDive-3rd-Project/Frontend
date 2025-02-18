@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import axios from "axios";
 import {
   PieChart,
   Pie,
@@ -7,8 +8,9 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import DummyData from "../data/DummyData";
 import "../styles/ClientRetention.css";
+
+const API_BASE_URL = `${process.env.REACT_APP_API_URL}/api/users/stats`;
 
 const COLORS = [
   "#8884d8",
@@ -23,11 +25,6 @@ const COLORS = [
   "#8E44AD",
   "#16A085",
   "#D35400",
-  "#C0392B",
-  "#1ABC9C",
-  "#F1C40F",
-  "#27AE60",
-  "#2C3E50",
 ];
 
 const regions = [
@@ -50,62 +47,134 @@ const regions = [
   "제주",
 ];
 
-const ageGroups = ["10대", "20대", "30대", "40대", "50대", "60대 이상"];
+const ageGroups = {
+  TEENS: "10대",
+  TWENTIES: "20대",
+  THIRTIES: "30대",
+  FORTIES: "40대",
+  FIFTIES: "50대",
+  SIXTIES_AND_ABOVE: "60대 이상",
+};
+
 const genders = ["남자", "여자"];
+
+const genderMapping = {
+  남자: ["MALE", "남자"],
+  여자: ["FEMALE", "여자"],
+};
 
 const ClientRetention = () => {
   const [filterGender, setFilterGender] = useState(["전체"]);
   const [filterRegion, setFilterRegion] = useState(["전체"]);
   const [filterAgeGroup, setFilterAgeGroup] = useState(["전체"]);
+  const [genderData, setGenderData] = useState([]);
+  const [regionData, setRegionData] = useState([]);
+  const [ageData, setAgeData] = useState([]);
+  const [totalClients, setTotalClients] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState({
     gender: false,
     region: false,
     age: false,
   });
 
-  const filteredClients = DummyData.filter((client) => {
-    const matchGender =
-      filterGender.includes("전체") || filterGender.includes(client.gender);
-    const matchRegion =
-      filterRegion.includes("전체") || filterRegion.includes(client.region);
-    const matchAge =
-      filterAgeGroup.includes("전체") ||
-      filterAgeGroup.some((ageLabel) => {
-        const index = ageGroups.indexOf(ageLabel);
-        if (index === -1) return false;
-        const minAge = index * 10 + 10;
-        const maxAge = index === 5 ? 100 : minAge + 9;
-        return client.age >= minAge && client.age <= maxAge;
+  const fetchUserStats = useCallback(async () => {
+    setLoading(true);
+    try {
+      const rawToken = localStorage.getItem("token")?.trim();
+      const token = rawToken?.startsWith("Bearer ")
+        ? rawToken
+        : `Bearer ${rawToken}`;
+
+      const headers = {
+        Authorization: token,
+        "Content-Type": "application/json",
+      };
+
+      const params = new URLSearchParams();
+
+      if (!filterGender.includes("전체")) {
+        filterGender.forEach((g) => {
+          genderMapping[g].forEach((mappedValue) => {
+            params.append("gender", mappedValue);
+          });
+        });
+      }
+
+      if (!filterRegion.includes("전체")) {
+        filterRegion.forEach((r) => params.append("region", r));
+      }
+
+      if (!filterAgeGroup.includes("전체")) {
+        filterAgeGroup.forEach((a) =>
+          params.append(
+            "ageGroups",
+            Object.keys(ageGroups).find((key) => ageGroups[key] === a)
+          )
+        );
+      }
+
+      const response = await axios.get(`${API_BASE_URL}?${params.toString()}`, {
+        withCredentials: true,
+        headers,
       });
 
-    return matchGender && matchRegion && matchAge;
-  });
+      const { total, genderStats, regionStats, ageStats } = response.data;
+      setTotalClients(total);
 
-  const totalClients = filteredClients.length;
+      const combinedGenderData = {};
+      Object.entries(genderStats).forEach(([key, value]) => {
+        if (genderMapping["남자"].includes(key)) {
+          combinedGenderData["남자"] =
+            (combinedGenderData["남자"] || 0) + value;
+        } else if (genderMapping["여자"].includes(key)) {
+          combinedGenderData["여자"] =
+            (combinedGenderData["여자"] || 0) + value;
+        }
+      });
 
-  const transformData = (labels, key) =>
-    labels
-      .map((label) => ({
-        name: label,
-        value: filteredClients.filter((c) => c[key] === label).length,
-      }))
-      .filter((d) => d.value > 0);
+      setGenderData(
+        Object.entries(combinedGenderData)
+          .filter(([_, value]) => value > 0)
+          .map(([key, value]) => ({ name: key, value }))
+      );
 
-  const genderData = transformData(genders, "gender");
-  const regionData = transformData(regions, "region");
+      setRegionData(
+        Object.entries(regionStats).map(([key, value]) => ({
+          name: key,
+          value,
+        }))
+      );
 
-  const ageData = ageGroups
-    .map((group, index) => {
-      const minAge = index * 10 + 10;
-      const maxAge = index === 5 ? 100 : minAge + 9;
-      return {
-        name: group,
-        value: filteredClients.filter(
-          (client) => client.age >= minAge && client.age <= maxAge
-        ).length,
+      const convertAgeKeyToKorean = (key) => {
+        if (key.includes("10.0-20.0")) return "10대";
+        if (key.includes("20.0-30.0")) return "20대";
+        if (key.includes("30.0-40.0")) return "30대";
+        if (key.includes("40.0-50.0")) return "40대";
+        if (key.includes("50.0-60.0")) return "50대";
+        if (key.includes("60.0-*")) return "60대 이상";
+        return key;
       };
-    })
-    .filter((d) => d.value > 0);
+      const ageOrder = ["10대", "20대", "30대", "40대", "50대", "60대 이상"];
+
+      const formattedAgeData = Object.entries(ageStats)
+        .map(([key, value]) => ({
+          name: convertAgeKeyToKorean(key),
+          value,
+        }))
+        .filter(({ value }) => value > 0)
+        .sort((a, b) => ageOrder.indexOf(a.name) - ageOrder.indexOf(b.name));
+
+      setAgeData(formattedAgeData);
+    } catch (error) {
+      console.error("❌ [ERROR] 데이터 불러오기 실패:", error);
+    }
+    setLoading(false);
+  }, [filterGender, filterRegion, filterAgeGroup]);
+
+  useEffect(() => {
+    fetchUserStats();
+  }, [fetchUserStats]);
 
   const handleFilterChange = (setFilter, value) => {
     setFilter((prev) => {
@@ -115,6 +184,12 @@ const ClientRetention = () => {
         ? prev.filter((item) => item !== value)
         : [...prev, value];
     });
+  };
+
+  const resetFilters = () => {
+    setFilterGender(["전체"]);
+    setFilterRegion(["전체"]);
+    setFilterAgeGroup(["전체"]);
   };
 
   const toggleDropdown = (type) => {
@@ -130,7 +205,15 @@ const ClientRetention = () => {
       {dropdownOpen[type] && (
         <div className="dropdown-menu">
           <div className="dropdown-scroll">
-            {["전체", ...options].map((option) => (
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={filter.includes("전체")}
+                onChange={() => setFilter(["전체"])}
+              />
+              전체
+            </label>
+            {options.map((option) => (
               <label key={option} className="checkbox-label">
                 <input
                   type="checkbox"
@@ -153,7 +236,7 @@ const ClientRetention = () => {
       return (
         <div className="tooltip-box">
           <p>
-            <strong>{name}</strong>
+            <strong>{ageGroups[name] || name}</strong>
           </p>
           <p>인원: {value}명</p>
           <p>비율: {percentage}%</p>
@@ -185,94 +268,91 @@ const ClientRetention = () => {
           "연령대",
           filterAgeGroup,
           setFilterAgeGroup,
-          ageGroups,
+          Object.values(ageGroups),
           "age"
         )}
-        <button
-          className="reset-btn"
-          onClick={() => {
-            setFilterGender(["전체"]);
-            setFilterRegion(["전체"]);
-            setFilterAgeGroup(["전체"]);
-          }}
-        >
+        <button className="reset-btn" onClick={resetFilters}>
           초기화
         </button>
       </div>
 
-      <div className="chart-container">
-        {genderData.length > 0 && (
-          <div className="chart-box">
-            <h3>성별 비율</h3>
-            <ResponsiveContainer width="100%" height={400}>
-              <PieChart>
-                <Pie
-                  data={genderData}
-                  dataKey="value"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  label={({ name, value }) => `${name}: ${value}명`}
-                >
-                  {genderData.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip content={<CustomTooltip />} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+      {loading ? (
+        <p>📊 데이터를 불러오는 중...</p>
+      ) : (
+        <div className="chart-container">
+          {genderData.length > 0 && (
+            <div className="chart-box">
+              <h3>성별 비율</h3>
+              <ResponsiveContainer width="100%" height={400}>
+                <PieChart>
+                  <Pie
+                    data={genderData}
+                    dataKey="value"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    label={({ name, value }) => `${name} (${value}명)`}
+                  >
+                    {genderData.map((_, i) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
 
-        {regionData.length > 0 && (
-          <div className="chart-box">
-            <h3>지역별 비율</h3>
-            <ResponsiveContainer width="100%" height={400}>
-              <PieChart>
-                <Pie
-                  data={regionData}
-                  dataKey="value"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  label={({ name, value }) => `${name}: ${value}명`}
-                >
-                  {regionData.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip content={<CustomTooltip />} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+          {regionData.length > 0 && (
+            <div className="chart-box">
+              <h3>지역별 비율</h3>
+              <ResponsiveContainer width="100%" height={400}>
+                <PieChart>
+                  <Pie
+                    data={regionData}
+                    dataKey="value"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    label={({ name, value }) => `${name} (${value}명)`}
+                  >
+                    {regionData.map((_, i) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
 
-        {ageData.length > 0 && (
-          <div className="chart-box">
-            <h3>연령별 비율</h3>
-            <ResponsiveContainer width="100%" height={400}>
-              <PieChart>
-                <Pie
-                  data={ageData}
-                  dataKey="value"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  label={({ name, value }) => `${name}: ${value}명`}
-                >
-                  {ageData.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip content={<CustomTooltip />} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </div>
+          {ageData.length > 0 && (
+            <div className="chart-box">
+              <h3>연령별 비율</h3>
+              <ResponsiveContainer width="100%" height={400}>
+                <PieChart>
+                  <Pie
+                    data={ageData}
+                    dataKey="value"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    label={({ name, value }) => `${name} (${value}명)`}
+                  >
+                    {ageData.map((_, i) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend formatter={(value) => value} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
