@@ -26,6 +26,12 @@ jobs:
       - name: 📦 Install Dependencies
         run: npm install
 
+      - name: 📝 Create .env.production file
+        run: |
+          echo "REACT_APP_API_URL=${{ secrets.REACT_APP_API_URL }}" >> .env.production
+          echo "REACT_APP_KAKAO_REST_API_KEY=${{ secrets.REACT_APP_KAKAO_REST_API_KEY }}" >> .env.production
+          echo "REACT_APP_KAKAO_JS_KEY=${{ secrets.REACT_APP_KAKAO_JS_KEY }}" >> .env.production
+
       - name: 🏗️ Build React App
         run: CI=false npm run build
 
