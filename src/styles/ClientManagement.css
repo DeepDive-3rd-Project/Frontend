@@ -421,7 +421,8 @@
 
 .history-modal-header {
   position: sticky;
-  top: 0;
+  height: 10%;
+  top: -20px;
   background: white;
   z-index: 10;
   padding: 10px 20px;
