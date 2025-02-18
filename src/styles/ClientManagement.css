@@ -9,6 +9,11 @@
   display: flex;
   flex-direction: column;
   gap: 15px;
+  margin-top: 10px;
+}
+
+.client-management h2 {
+  height: 5px;
 }
 
 .search-container {
@@ -17,8 +22,9 @@
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  margin-bottom: 15px;
+  margin-bottom: 35px;
   width: 100%;
+  margin-top: -6px;
 }
 
 .search-container select {
@@ -37,6 +43,23 @@
   font-size: 16px;
 }
 
+.search-container .reset-btn {
+  background: #2b5ef7;
+  color: white;
+  padding: 10px;
+  font-size: 16px;
+  cursor: pointer;
+  border: none;
+  border-radius: 6px;
+  width: 80px;
+  height: 50px;
+  font-weight: bolder;
+}
+
+.search-container .reset-btn:hover {
+  background: #1a4cd8;
+}
+
 .search-container .add-btn {
   background: #2b5ef7;
   color: white;
@@ -45,6 +68,8 @@
   border: none;
   cursor: pointer;
   border-radius: 6px;
+  width: 100px !important;
+  height: 50px;
 }
 
 .search-container .add-btn:hover {
@@ -82,7 +107,7 @@
 
 .close-modal-btn {
   position: absolute;
-  top: 10px;
+  top: 20px;
   right: 15px;
   background: none !important;
   border: none;
@@ -93,6 +118,7 @@
 
 .client-container {
   width: 900px;
+  margin-top: -30px;
 }
 
 .close-modal-btn:hover {
@@ -103,8 +129,8 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  flex-grow: 1; /* 🔥 내부 내용이 늘어나도 스크롤 적용 */
-  padding-bottom: 40px; /* 🔥 푸터 높이를 고려한 추가 버튼 여백 */
+  flex-grow: 1;
+  padding-bottom: 40px;
 }
 
 .client-form label {
@@ -120,7 +146,7 @@
 }
 
 .client-form select {
-  width: 106%; /* 입력창과 동일한 너비 설정 */
+  width: 106%;
   padding: 10px;
   font-size: 16px;
   border: 1px solid #ccc;
@@ -327,6 +353,10 @@
   margin-right: 10px;
 }
 
+.save-btn:hover {
+  background-color: #1a4cd8;
+}
+
 .cancel-btn {
   background: #ccc;
   color: black;
@@ -371,7 +401,8 @@
 .history-modal {
   background: white;
   padding: 20px;
-  width: 400px;
+  width: 500px;
+  height: 60%;
   border-radius: 8px;
   box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
   text-align: center;
@@ -383,11 +414,28 @@
   overflow-y: auto;
 }
 
+.history-modal h3 {
+  margin-left: 37%;
+  font-size: 22px;
+}
+
+.history-modal-header {
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 10;
+  padding: 10px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #ddd;
+}
+
 .history-modal ul {
   list-style: none;
   padding: 0;
   max-height: 200px;
-  overflow-y: auto;
+  overflow-y: 50%;
   text-align: left;
 }
 
@@ -401,8 +449,8 @@
 }
 
 .history-modal-overlay .close-modal-btn {
-  right: 10px;
-  top: -10px;
+  margin-left: 23%;
+  top: 10px;
   font-size: 20px;
 }
 
@@ -428,8 +476,8 @@
   border: 1px solid #ddd;
   list-style-type: none;
   padding: 5px;
-  max-height: 150px; /* 최대 높이 설정 */
-  overflow-y: auto; /* 세로 스크롤 추가 */
+  max-height: 150px;
+  overflow-y: auto;
   width: calc(100% - 20px);
   z-index: 1000;
 }
@@ -441,4 +489,42 @@
 
 .address-suggestions li:hover {
   background-color: #f1f1f1;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: -10px;
+  gap: 8px;
+}
+
+.pagination button {
+  background: none;
+  border: 1px solid #ddd;
+  color: black;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 4px;
+  transition: all 0.2s ease-in-out;
+}
+
+.pagination button:hover {
+  background: #f0f0f0;
+}
+
+.pagination button.active {
+  font-weight: bold;
+  color: white;
+  background: #2b5ef7;
+  font-size: 18px;
+  border-radius: 6px;
+  padding: 10px 14px;
+  height: auto;
+}
+
+.pagination button:disabled {
+  color: #aaa;
+  cursor: not-allowed;
 }
