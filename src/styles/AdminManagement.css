@@ -92,6 +92,7 @@
 
 .admin-list {
   text-align: left;
+  overflow-y: auto;
 }
 
 .admin-item {
