@@ -52,7 +52,7 @@ const AdminManagement = () => {
     try {
       const token = localStorage.getItem("token").replace("Bearer ", "").trim();
       const response = await axios.get(
-        `${API_BASE_URL}/list/page?page=${page - 1}&size=${itemsPerPage}`,
+        `${API_BASE_URL}/list?page=${page - 1}&size=${itemsPerPage}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
