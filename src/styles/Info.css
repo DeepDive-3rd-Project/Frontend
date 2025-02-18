@@ -33,6 +33,7 @@
   backdrop-filter: blur(8px);
   color: #000000;
   overflow-y: auto;
+  margin-top: 190px;
 }
 
 .info-container h1 {
