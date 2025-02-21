@@ -24,16 +24,39 @@ const KakaoMap = ({ lat, lng, width = "100%", height = "400px" }) => {
     console.log("📡 백엔드에서 위치 정보 가져오는 중...");
     const fetchClientLocation = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/users/location`);
-        if (!response.ok) throw new Error("위치 정보를 불러오지 못했습니다.");
+        let token = localStorage.getItem("token")?.trim();
+        if (!token) {
+          throw new Error("로그인이 필요합니다.");
+        }
 
-        const locationData = await response.json();
-        console.log("📌 가져온 위치 데이터:", locationData);
+        if (!token.startsWith("Bearer ")) {
+          token = `Bearer ${token}`;
+        }
 
-        setPosition({
-          lat: locationData.x || 37.5665,
-          lng: locationData.y || 126.978,
+        console.log("📡 위치 정보 가져오는 중...");
+
+        const response = await fetch(`${API_BASE_URL}/api/users/location`, {
+          method: "GET",
+          headers: {
+            Authorization: token, // ✅ 올바른 인증 헤더 추가
+            "Content-Type": "application/json",
+          },
         });
+
+        if (response.status === 401) {
+          console.error("🚨 401 Unauthorized - 로그인 필요");
+          alert("로그인이 만료되었습니다. 다시 로그인해주세요.");
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error("위치 정보를 불러오지 못했습니다.");
+        }
+
+        const data = await response.json();
+        console.log("📌 백엔드에서 받은 위치 정보:", data);
+
+        return data;
       } catch (error) {
         console.error("🚨 위치 정보 가져오기 오류:", error);
       }

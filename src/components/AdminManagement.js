@@ -20,6 +20,8 @@ const AdminManagement = () => {
   const [isAuthorized, setIsAuthorized] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [pageGroup, setPageGroup] = useState(0);
+  const pagesPerGroup = 10;
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -50,24 +52,41 @@ const AdminManagement = () => {
 
   const fetchAdmins = async (page) => {
     try {
-      const token = localStorage.getItem("token").replace("Bearer ", "").trim();
+      const token = localStorage
+        .getItem("token")
+        ?.replace("Bearer ", "")
+        .trim();
       const response = await axios.get(
         `${API_BASE_URL}/list?page=${page - 1}&size=${itemsPerPage}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setAdmins(response.data.content);
-      setTotalPages(response.data.totalPages);
+      console.log("📌 API 응답 데이터:", response.data);
+
+      let fetchedAdmins = [];
+      if (Array.isArray(response.data)) {
+        fetchedAdmins = response.data;
+      } else if (response.data && Array.isArray(response.data.content)) {
+        fetchedAdmins = response.data.content;
+      } else {
+        console.warn("⚠️ API 응답이 예상과 다름. 기본값 [] 설정");
+        fetchedAdmins = [];
+      }
+
+      setAdmins(fetchedAdmins);
+      setTotalPages(response.data.totalPages || 1);
     } catch (error) {
       console.error("❌ 관리자 목록 불러오기 실패:", error);
+      setAdmins([]);
     }
   };
 
   const fetchAdminByEmail = async (email) => {
     try {
-      const token = localStorage.getItem("token").replace("Bearer ", "").trim();
+      const token = localStorage
+        .getItem("token")
+        ?.replace("Bearer ", "")
+        .trim();
       const response = await axios.get(
         `${API_BASE_URL}/search?email=${email}`,
         {
@@ -75,13 +94,21 @@ const AdminManagement = () => {
         }
       );
 
-      if (response.data) {
+      console.log("📌 검색 API 응답 데이터:", response.data);
+
+      if (Array.isArray(response.data)) {
+        setAdmins(response.data);
+      } else if (response.data) {
         setAdmins([response.data]);
-        setTotalPages(1);
+      } else {
+        console.warn("⚠️ 검색 결과 없음");
+        setAdmins([]);
       }
+
+      setTotalPages(1);
     } catch (error) {
       console.error("❌ 관리자 검색 실패:", error);
-      alert("해당 이메일의 관리자를 찾을 수 없습니다.");
+      alert("⚠️ 해당 이메일의 관리자를 찾을 수 없습니다.");
     }
   };
 
@@ -102,6 +129,23 @@ const AdminManagement = () => {
   const handlePageChange = (page) => {
     setCurrentPage(page);
   };
+
+  const handlePrevPageGroup = () => {
+    if (pageGroup > 0) {
+      setPageGroup(pageGroup - 1);
+    }
+  };
+
+  const handleNextPageGroup = () => {
+    if ((pageGroup + 1) * pagesPerGroup < totalPages) {
+      setPageGroup(pageGroup + 1);
+    }
+  };
+
+  const pageNumbers = Array.from(
+    { length: pagesPerGroup },
+    (_, i) => pageGroup * pagesPerGroup + i + 1
+  ).filter((page) => page <= totalPages);
 
   const closeModal = () => {
     setIsEditModalOpen(false);
@@ -155,10 +199,8 @@ const AdminManagement = () => {
       alert("✅ 관리자 추가 완료!");
       setNewAdmin({ email: "", password: "", role: "NORMAL" });
 
-      const response = await axios.get(`${API_BASE_URL}/list`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setAdmins(response.data);
+      setCurrentPage(1);
+      await fetchAdmins(1);
       closeModal();
     } catch (error) {
       console.error("❌ 관리자 추가 실패:", error);
@@ -169,23 +211,23 @@ const AdminManagement = () => {
   const handleSaveRoleChange = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem("token").replace("Bearer ", "").trim();
+      const token = localStorage
+        .getItem("token")
+        ?.replace("Bearer ", "")
+        .trim();
       await axios.patch(
         `${API_BASE_URL}/${selectedAdmin.id}/role`,
         { role: selectedAdmin.role },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      alert("관리자 권한 변경 성공!");
+      alert("✅ 관리자 권한 변경 성공!");
       closeModal();
 
-      const response = await axios.get(`${API_BASE_URL}/list`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setAdmins(response.data);
+      fetchAdmins(currentPage);
     } catch (error) {
       console.error("❌ 관리자 권한 변경 실패:", error);
-      alert("권한 변경에 실패했습니다.");
+      alert("⚠️ 권한 변경에 실패했습니다.");
     }
   };
 
@@ -210,49 +252,59 @@ const AdminManagement = () => {
 
       <div className="admin-list">
         <h3>관리자 목록</h3>
-        {admins.map((admin) => (
-          <div key={admin.id} className="admin-item">
-            <p>
-              {admin.email} (
-              {admin.role === "SUPER" ? "최고 관리자" : "일반 관리자"})
-            </p>
-            <div className="button-group">
-              <button
-                onClick={() => {
-                  setSelectedAdmin(admin);
-                  setIsEditModalOpen(true);
-                }}
-                className="change-btn"
-              >
-                권한 변경
-              </button>
-              {admin.role !== "SUPER" && (
+        {Array.isArray(admins) && admins.length > 0 ? (
+          admins.map((admin) => (
+            <div key={admin.id} className="admin-item">
+              <p>
+                {admin.email} (
+                {admin.role === "SUPER" ? "최고 관리자" : "일반 관리자"})
+              </p>
+              <div className="button-group">
                 <button
                   onClick={() => {
-                    setAdminToDelete(admin.id);
-                    setIsDeleteModalOpen(true);
+                    setSelectedAdmin(admin);
+                    setIsEditModalOpen(true);
                   }}
-                  className="delete-btn"
+                  className="change-btn"
                 >
-                  삭제
+                  권한 변경
                 </button>
-              )}
+                {admin.role !== "SUPER" && (
+                  <button
+                    onClick={() => {
+                      setAdminToDelete(admin.id);
+                      setIsDeleteModalOpen(true);
+                    }}
+                    className="delete-btn"
+                  >
+                    삭제
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        ) : (
+          <p>관리자 목록을 불러오는 중...</p>
+        )}
       </div>
 
       {totalPages > 1 && (
         <div className="pagination">
-          {[...Array(totalPages)].map((_, index) => (
+          {pageGroup > 0 && <button onClick={handlePrevPageGroup}>◀</button>}
+
+          {pageNumbers.map((page) => (
             <button
-              key={index}
-              className={currentPage === index + 1 ? "active" : ""}
-              onClick={() => handlePageChange(index + 1)}
+              key={page}
+              className={currentPage === page ? "active" : ""}
+              onClick={() => handlePageChange(page)}
             >
-              {index + 1}
+              {page}
             </button>
           ))}
+
+          {(pageGroup + 1) * pagesPerGroup < totalPages && (
+            <button onClick={handleNextPageGroup}>▶</button>
+          )}
         </div>
       )}
 

@@ -1,11 +1,13 @@
 .admin-container {
   width: 900px;
+  height: 100%;
   margin: 40px auto;
   padding: 20px;
   background: white;
   border-radius: 12px;
   box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
   text-align: center;
+  margin-top: 0%;
 }
 
 .search-container {
@@ -93,6 +95,11 @@
 .admin-list {
   text-align: left;
   overflow-y: auto;
+  height: 65%;
+}
+
+.pagination button {
+  margin-top: 50px;
 }
 
 .admin-item {
