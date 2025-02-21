@@ -106,11 +106,28 @@ const ClientManagement = () => {
 
       console.log("🔍 검색 결과 응답 데이터:", data);
 
-      const updatedClients = (data.content || data.contents || []).map(
-        (client) => ({
-          ...client,
-          regionAddress: client.regionAddress || "주소 없음",
-          roadAddress: client.roadAddress || "주소 없음",
+      // ✅ 좌표 변환 추가
+      const updatedClients = await Promise.all(
+        (data.content || data.contents || []).map(async (client) => {
+          let lat = client.y ?? null;
+          let lng = client.x ?? null;
+
+          if (!lat || !lng) {
+            console.log(`📍 고객(${client.name}) 좌표 변환 시도...`);
+            const coords = await fetchCoordinates(
+              client.roadAddress || client.regionAddress
+            );
+            lat = coords.lat;
+            lng = coords.lng;
+          }
+
+          return {
+            ...client,
+            regionAddress: client.regionAddress || "주소 없음",
+            roadAddress: client.roadAddress || "주소 없음",
+            lat,
+            lng,
+          };
         })
       );
 
@@ -150,6 +167,13 @@ const ClientManagement = () => {
   };
 
   const handleClientSelect = async (client) => {
+    let genderValue = client.gender;
+    if (genderValue === "MALE") {
+      genderValue = "남자";
+    } else if (genderValue === "FEMALE") {
+      genderValue = "여자";
+    }
+
     console.log("📌 선택된 고객:", client);
 
     let updatedClient = {
@@ -163,18 +187,20 @@ const ClientManagement = () => {
         client.latestRoadAddress || client.roadAddress || "주소 없음",
       gender: client.gender,
       age: client.age,
-      lat: client.x || client.lat || null,
-      lng: client.y || client.lng || null,
+      lat: client.y ?? client.lat ?? null, // ✅ y → lat
+      lng: client.x ?? client.lng ?? null, // ✅ x → lng
     };
+
+    console.log("📌 [선택된 고객 ID]:", updatedClient.id);
 
     let addressToSearch =
       updatedClient.roadAddress !== "주소 없음"
         ? updatedClient.roadAddress
         : updatedClient.regionAddress;
 
+    // ✅ 좌표가 없으면 Kakao API를 사용하여 변환
     if (!updatedClient.lat || !updatedClient.lng) {
       console.log("📍 지도 좌표 없음, Kakao API로 변환 시도...");
-
       try {
         let coords = await fetchCoordinates(addressToSearch);
         console.log("📌 변환된 Kakao 좌표:", coords);
@@ -349,57 +375,32 @@ const ClientManagement = () => {
   };
 
   const fetchCoordinates = async (address) => {
-    return new Promise(async (resolve, reject) => {
-      if (!REST_API_KEY) {
-        console.error("🚨 Kakao REST API 키가 설정되지 않았습니다!");
-        reject("Kakao API 키 오류");
-        return;
-      }
+    if (!REST_API_KEY || !address) return { lat: 37.5665, lng: 126.978 };
 
-      console.log(`📡 Kakao API 주소 검색 요청: ${address}`);
-
-      const fetchFromKakaoAPI = async (query) => {
-        const response = await fetch(
-          `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(
-            query.trim()
-          )}`,
-          {
-            method: "GET",
-            headers: {
-              Authorization: `KakaoAK ${REST_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        return response.json();
-      };
-
-      try {
-        let data = await fetchFromKakaoAPI(address);
-
-        if (!data.documents || data.documents.length === 0) {
-          console.warn("⚠️ 도로명 주소 변환 실패. 지번 주소로 재시도...");
-          data = await fetchFromKakaoAPI(address);
+    try {
+      const response = await fetch(
+        `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(
+          address
+        )}`,
+        {
+          method: "GET",
+          headers: { Authorization: `KakaoAK ${REST_API_KEY}` },
         }
+      );
 
-        if (data.documents && data.documents.length > 0) {
-          const coords = {
-            lat: parseFloat(data.documents[0].y),
-            lng: parseFloat(data.documents[0].x),
-          };
-          console.log(
-            `📌 변환된 Kakao 좌표: lat=${coords.lat}, lng=${coords.lng}`
-          );
-          resolve(coords);
-        } else {
-          console.warn("⚠️ Kakao API 응답 없음. 기본 좌표 반환");
-          resolve({ lat: 37.5665, lng: 126.978 });
-        }
-      } catch (error) {
-        console.error("🚨 Kakao API 요청 실패", error);
-        resolve({ lat: 37.5665, lng: 126.978 });
+      const data = await response.json();
+      if (data.documents?.length > 0) {
+        return {
+          lat: parseFloat(data.documents[0].y),
+          lng: parseFloat(data.documents[0].x),
+        };
+      } else {
+        return { lat: 37.5665, lng: 126.978 };
       }
-    });
+    } catch (error) {
+      console.error("🚨 Kakao API 요청 실패", error);
+      return { lat: 37.5665, lng: 126.978 };
+    }
   };
 
   const handleAddClient = async (e) => {
@@ -412,13 +413,17 @@ const ClientManagement = () => {
 
     console.log("📌 추가할 고객 정보 (전송 전):", newClient);
 
+    let convertedGender = newClient.gender;
+    if (newClient.gender === "MALE") convertedGender = "남자";
+    if (newClient.gender === "FEMALE") convertedGender = "여자";
+
     const userData = {
       name: newClient.name,
       email: newClient.email,
       phoneNumber: newClient.phone.replace(/-/g, ""),
       regionAddress: newClient.regionAddress || null,
       roadAddress: newClient.roadAddress || null,
-      gender: newClient.gender,
+      gender: convertedGender,
       age: parseInt(newClient.age, 10),
     };
 
@@ -465,11 +470,11 @@ const ClientManagement = () => {
         selectedClient.lat,
         selectedClient.lng
       );
-
+      console.log(selectedClient);
       console.log(
         "📌 주소 정보:",
-        selectedClient.road_Address,
-        selectedClient.region_Address
+        selectedClient.roadAddress,
+        selectedClient.regionAddress
       );
 
       if (
@@ -534,10 +539,7 @@ const ClientManagement = () => {
   };
 
   const handleOpenEditModal = () => {
-    setEditedClient({
-      ...selectedClient,
-      gender: selectedClient.gender === "남자" ? "MALE" : "FEMALE",
-    });
+    setEditedClient({ ...selectedClient });
     setIsEditModalOpen(true);
   };
 
@@ -550,38 +552,78 @@ const ClientManagement = () => {
     setEditedClient((prev) => ({ ...prev, [name]: value }));
   };
 
+  const fetchUpdatedClient = async (clientId) => {
+    try {
+      let token = localStorage.getItem("token")?.trim();
+      if (!token) throw new Error("로그인이 필요합니다.");
+
+      const response = await fetch(`${API_BASE_URL}/api/users/${clientId}`, {
+        method: "GET",
+        headers: { Authorization: token },
+      });
+
+      if (!response.ok) throw new Error("최신 고객 정보를 가져올 수 없습니다.");
+
+      const updatedClient = await response.json();
+
+      // Kakao 좌표 변환 적용
+      let coords = { lat: updatedClient.lat, lng: updatedClient.lng };
+      if (!updatedClient.lat || !updatedClient.lng) {
+        console.log("📍 Kakao API를 사용하여 좌표 변환 시도...");
+        coords = await fetchCoordinates(
+          updatedClient.roadAddress || updatedClient.regionAddress
+        );
+      }
+
+      return { ...updatedClient, lat: coords.lat, lng: coords.lng };
+    } catch (error) {
+      console.error("🚨 고객 정보 업데이트 중 오류 발생:", error);
+      return null;
+    }
+  };
+
+  const sanitizeRequestBody = (requestBody) => {
+    return Object.fromEntries(
+      Object.entries(requestBody).filter(
+        ([_, value]) => value !== null && value !== undefined
+      )
+    );
+  };
+
   const handleSaveEdit = async () => {
     try {
       let token = localStorage.getItem("token")?.trim();
-
       if (!token) {
         alert("로그인이 필요합니다.");
         return;
       }
-
       if (!token.startsWith("Bearer ")) {
         token = `Bearer ${token}`;
       }
 
-      console.log("🔍 최종 JWT Token:", `"${token}"`);
-
-      let transformedGender = editedClient.gender;
-      if (transformedGender === "MALE") {
-        transformedGender = "남자";
-      } else if (transformedGender === "FEMALE") {
-        transformedGender = "여자";
+      console.log("📌 수정 요청 사용자 ID:", editedClient?.id);
+      if (!editedClient?.id) {
+        console.error("🚨 오류: 사용자 ID가 존재하지 않음");
+        alert("오류 발생: 사용자 ID가 존재하지 않습니다.");
+        return;
       }
 
-      const requestBody = {
-        name: editedClient.name,
-        email: editedClient.email,
-        phoneNumber: editedClient.phoneNumber,
-        regionAddress:
-          editedClient.regionAddress || selectedClient?.regionAddress,
-        roadAddress: editedClient.roadAddress || selectedClient?.roadAddress,
-        gender: transformedGender,
-        age: editedClient.age,
+      let convertedGender = editedClient.gender;
+      if (editedClient.gender === "MALE") convertedGender = "남자";
+      if (editedClient.gender === "FEMALE") convertedGender = "여자";
+
+      let requestBody = {
+        name: editedClient.name?.trim(),
+        email: editedClient.email?.trim(),
+        phoneNumber: editedClient.phoneNumber?.replace(/-/g, "").trim(),
+        regionAddress: editedClient.regionAddress?.trim() || null,
+        roadAddress: editedClient.roadAddress?.trim() || null,
+        gender: convertedGender,
+        age: Number(editedClient.age),
       };
+
+      // ✅ 불필요한 null/undefined 값 제거
+      requestBody = sanitizeRequestBody(requestBody);
 
       console.log(
         "📤 고객 수정 요청 데이터:",
@@ -603,40 +645,61 @@ const ClientManagement = () => {
       if (!response.ok) {
         const errorText = await response.text();
         console.error("🚨 서버 응답 오류:", errorText);
-        alert(`❌ 서버 응답 오류: ${errorText}`);
+
+        if (response.status === 404) {
+          alert("❌ 해당 사용자는 삭제되었거나 존재하지 않습니다.");
+        } else {
+          alert(`❌ 서버 응답 오류: ${errorText}`);
+        }
+
         throw new Error(`❌ 고객 정보 수정 실패 (status: ${response.status})`);
       }
 
       console.log("✅ 고객 정보 수정 성공!");
+      alert("고객 정보가 성공적으로 수정되었습니다.");
 
-      let updatedLat = selectedClient.lat;
-      let updatedLng = selectedClient.lng;
+      setSelectedClient((prevClient) => ({
+        ...prevClient,
+        ...requestBody,
+      }));
 
-      if (
-        editedClient.roadAddress !== selectedClient.roadAddress ||
-        editedClient.regionAddress !== selectedClient.regionAddress
-      ) {
-        console.log("📌 주소가 변경됨! Kakao API로 새 좌표 요청");
+      const updatedClient = await fetchUpdatedClient(editedClient.id);
 
-        const newCoords = await fetchCoordinates(
-          editedClient.roadAddress || editedClient.regionAddress
-        );
-        console.log("📌 새 좌표:", newCoords);
+      console.log("📌 서버에서 가져온 최신 고객 데이터:", updatedClient);
 
-        if (newCoords.lat && newCoords.lng) {
-          updatedLat = newCoords.lat;
-          updatedLng = newCoords.lng;
+      let lat = updatedClient.y ?? updatedClient.lat ?? null;
+      let lng = updatedClient.x ?? updatedClient.lng ?? null;
+
+      if (!lat || !lng) {
+        console.log("📍 Kakao API를 사용하여 좌표 변환 시도...");
+        try {
+          const coords = await fetchCoordinates(
+            updatedClient.roadAddress || updatedClient.regionAddress
+          );
+          lat = coords.lat;
+          lng = coords.lng;
+          console.log(`📌 변환된 Kakao 좌표: lat=${lat}, lng=${lng}`);
+        } catch (error) {
+          console.error("🚨 Kakao API 좌표 변환 실패:", error);
+          lat = 37.5665;
+          lng = 126.978;
         }
       }
 
-      setSelectedClient((prev) => ({
-        ...prev,
-        ...editedClient,
-        lat: updatedLat,
-        lng: updatedLng,
-        regionAddress: editedClient.regionAddress || prev.regionAddress,
-        roadAddress: editedClient.roadAddress || prev.roadAddress,
-      }));
+      console.log(`📍 최종 설정된 좌표: lat=${lat}, lng=${lng}`);
+
+      setSelectedClient((prevClient) => {
+        const newClient = {
+          ...prevClient,
+          ...updatedClient,
+          lat,
+          lng,
+        };
+        console.log("🟢 `selectedClient` 업데이트됨:", newClient);
+        return newClient;
+      });
+
+      fetchClients();
 
       setIsEditModalOpen(false);
     } catch (error) {
@@ -763,8 +826,14 @@ const ClientManagement = () => {
                   <strong>이름:</strong> {selectedClient.name}
                 </p>
                 <p>
-                  <strong>성별:</strong> {selectedClient.gender}
+                  <strong>성별:</strong>{" "}
+                  {selectedClient.gender === "MALE"
+                    ? "남자"
+                    : selectedClient.gender === "FEMALE"
+                    ? "여자"
+                    : selectedClient.gender}
                 </p>
+
                 <p>
                   <strong>나이:</strong> {selectedClient.age}
                 </p>
