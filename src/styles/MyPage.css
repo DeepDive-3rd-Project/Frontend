@@ -95,7 +95,7 @@ h2 {
   border-radius: 6px;
 }
 
-.modal-content button {
+.modal-content /button {
   margin-top: 5px;
   width: 340px;
   padding: 10px;
@@ -113,7 +113,7 @@ h2 {
 
 .close-modal-btn {
   margin-top: -10px !important;
-  margin-right: -155px;
+  margin-right: 0px !important;
   background: red;
   color: white;
   padding: 8px;
