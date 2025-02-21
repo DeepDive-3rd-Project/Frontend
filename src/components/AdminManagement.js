@@ -63,15 +63,17 @@ const AdminManagement = () => {
 
       console.log("📌 API 응답 데이터:", response.data);
 
+      let fetchedAdmins = [];
       if (Array.isArray(response.data)) {
-        setAdmins(response.data);
+        fetchedAdmins = response.data;
       } else if (response.data && Array.isArray(response.data.content)) {
-        setAdmins(response.data.content);
+        fetchedAdmins = response.data.content;
       } else {
         console.warn("⚠️ API 응답이 예상과 다름. 기본값 [] 설정");
-        setAdmins([]);
+        fetchedAdmins = [];
       }
 
+      setAdmins(fetchedAdmins);
       setTotalPages(response.data.totalPages || 1);
     } catch (error) {
       console.error("❌ 관리자 목록 불러오기 실패:", error);
@@ -197,10 +199,8 @@ const AdminManagement = () => {
       alert("✅ 관리자 추가 완료!");
       setNewAdmin({ email: "", password: "", role: "NORMAL" });
 
-      const response = await axios.get(`${API_BASE_URL}/list`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setAdmins(response.data);
+      setCurrentPage(1);
+      await fetchAdmins(1);
       closeModal();
     } catch (error) {
       console.error("❌ 관리자 추가 실패:", error);
